@@ -62,13 +62,30 @@ bijotel verify --db /data/chain.db
 
 ## Docker
 
+The published image lives at `ghcr.io/octavuntila-prog/bijotel-collector`
+(tags: `:0.1.0`, `:latest`). Default entrypoint is `serve` on `:4317`
+with the chain at `/data/chain.db`:
+
 ```bash
 docker run -p 4317:4317 \
   -e BIJOTEL_HMAC_SECRET=your-64-hex-secret \
   -v bijotel-data:/data \
-  ghcr.io/octavuntila-prog/bijotel-collector:latest \
-  serve --db /data/chain.db
+  ghcr.io/octavuntila-prog/bijotel-collector:latest
 ```
+
+Or override the default command — e.g. seed a chain for cross-compat
+testing:
+
+```bash
+docker run --rm \
+  -e BIJOTEL_HMAC_SECRET=your-64-hex-secret \
+  -v "$PWD":/data \
+  ghcr.io/octavuntila-prog/bijotel-collector:latest \
+  seed --db /data/chain.db --count 10
+```
+
+Image size: ~32 MB (Alpine + statically linked pure-Go binary). No
+CGo, no libc dependency at runtime.
 
 ## Subcommands
 
