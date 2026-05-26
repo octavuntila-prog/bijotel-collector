@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go-test:
+    name: Go test (${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.22", "1.23"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+
+      - name: go mod download
+        run: go mod download
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./... -v -race
+
+      - name: build binary
+        run: go build -o /tmp/bijotel-collector ./cmd/bijotel-collector
+
+  cross-compat:
+    # The single test that proves v0.1.0 is real: Go writes chain.db,
+    # Python BIJOTEL verifies it. If this goes red, nothing else matters.
+    name: Cross-compat with Python BIJOTEL
+    runs-on: ubuntu-latest
+    needs: go-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install bijotel (Python)
+        run: pip install bijotel
+
+      - name: build bijotel-collector
+        run: go build -o /tmp/bijotel-collector ./cmd/bijotel-collector
+
+      - name: seed chain with Go
+        run: |
+          export BIJOTEL_HMAC_SECRET=0011223344556677889900112233445566778899aabbccddeeff00112233aabb
+          /tmp/bijotel-collector seed --db /tmp/cross.db --count 25
+
+      - name: verify chain with Python BIJOTEL
+        run: |
+          export BIJOTEL_HMAC_SECRET=0011223344556677889900112233445566778899aabbccddeeff00112233aabb
+          bijotel verify --db /tmp/cross.db | tee /tmp/verify.out
+          grep -q "Chain VALID" /tmp/verify.out
+
+  docker-build:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    needs: go-test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t bijotel-collector:ci .

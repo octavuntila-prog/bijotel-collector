@@ -1,0 +1,19 @@
+# Built binaries — produced by `make build` or `go build`.
+/bijotel-collector
+/bijotel-collector.exe
+/bin/
+
+# SQLite chain artifacts. Test chains land here; production chains live
+# under /data and are never inside the repo.
+*.db
+*.db-wal
+*.db-shm
+
+# Distribution / packaging output.
+/dist/
+/vendor/
+
+# IDE / editor.
+.vscode/
+.idea/
+*.swp
